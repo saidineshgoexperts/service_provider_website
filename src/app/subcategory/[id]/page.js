@@ -25,18 +25,18 @@ export default function SubcategoryPage() {
   const [activeTab, setActiveTab] = useState('all');
   const [detectedCity, setDetectedCity] = useState(null);
 
-  const BOOKING_KEY = 'bookingContext';
+  const currentBooking = 'currentBooking';
 
   // Safe localStorage functions with SSR check
   function clearProviderForServiceFlow() {
     if (typeof window === 'undefined') return;
 
     try {
-      const existing = JSON.parse(localStorage.getItem(BOOKING_KEY)) || {};
+      const existing = JSON.parse(localStorage.getItem(currentBooking)) || {};
 
       if (existing.providerId) {
         delete existing.providerId;
-        localStorage.setItem(BOOKING_KEY, JSON.stringify(existing));
+        localStorage.setItem(currentBooking, JSON.stringify(existing));
         console.log('🧹 Cleared providerId from localStorage');
       }
     } catch (error) {
@@ -49,13 +49,13 @@ export default function SubcategoryPage() {
     if (typeof window === 'undefined') return;
 
     try {
-      const existing = JSON.parse(localStorage.getItem(BOOKING_KEY)) || {};
+      const existing = JSON.parse(localStorage.getItem(currentBooking)) || {};
 
       if (existing.providerId) {
         delete existing.providerId;
       }
 
-      localStorage.setItem(BOOKING_KEY, JSON.stringify(existing));
+      localStorage.setItem(currentBooking, JSON.stringify(existing));
       console.log('🚀 SERVICE FLOW - providerId removed');
     } catch (error) {
       console.error('Error setting service flow:', error);
@@ -67,14 +67,14 @@ export default function SubcategoryPage() {
     if (typeof window === 'undefined') return;
 
     try {
-      const existing = JSON.parse(localStorage.getItem(BOOKING_KEY)) || {};
+      const existing = JSON.parse(localStorage.getItem(currentBooking)) || {};
 
       const updated = {
         ...existing,
         providerId: providerId,
       };
 
-      localStorage.setItem(BOOKING_KEY, JSON.stringify(updated));
+      localStorage.setItem(currentBooking, JSON.stringify(updated));
       console.log('🚀 PROVIDER FLOW - providerId set:', providerId);
     } catch (error) {
       console.error('Error setting provider flow:', error);

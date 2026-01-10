@@ -15,6 +15,7 @@ import {
   Divider,
   CircularProgress,
   Alert,
+  Tooltip,
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import EditIcon from '@mui/icons-material/Edit';
@@ -22,6 +23,7 @@ import DeleteIcon from '@mui/icons-material/Delete';
 import HomeIcon from '@mui/icons-material/Home';
 import WorkIcon from '@mui/icons-material/Work';
 import LocationOnIcon from '@mui/icons-material/LocationOn';
+import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
 import { useBooking } from '../../contexts/BookingContext';
 
 export default function BookingConfirmationPage() {
@@ -39,7 +41,7 @@ export default function BookingConfirmationPage() {
   useEffect(() => {
     fetchAddresses();
 
-    // 🔥 Hydrate booking context from bookingContext (unified key)
+    // Hydrate booking context from localStorage
     if (typeof window !== 'undefined') {
       try {
         const savedBooking = localStorage.getItem(BOOKING_KEY);
@@ -50,14 +52,14 @@ export default function BookingConfirmationPage() {
           console.log('♻️ Booking hydrated from localStorage:', parsedBooking);
           console.log('📍 Provider ID:', parsedBooking.providerId || 'None (Direct Service Flow)');
           console.log('📍 Service ID:', parsedBooking.serviceId);
+          console.log('💰 Service Booking Cost:', parsedBooking.serviceBookingCost);
         }
 
-        // Also check currentBooking for backward compatibility
+        // Check currentBooking for backward compatibility
         const legacyBooking = localStorage.getItem('currentBooking');
         if (legacyBooking && !savedBooking) {
           const parsedLegacy = JSON.parse(legacyBooking);
           updateBooking(parsedLegacy);
-          // Migrate to new key
           localStorage.setItem(BOOKING_KEY, legacyBooking);
           console.log('♻️ Migrated from currentBooking to bookingContext');
         }
@@ -86,7 +88,7 @@ export default function BookingConfirmationPage() {
         const addressList = data.data || [];
         setAddresses(addressList);
         
-        // 🔥 Auto-select first address (or default if exists)
+        // Auto-select first address (or default if exists)
         if (addressList.length > 0) {
           const defaultAddr = addressList.find((addr) => addr.defaultAddress);
           const firstAddr = addressList[0];
@@ -145,7 +147,6 @@ export default function BookingConfirmationPage() {
     router.push('/booking/address');
   };
 
-  // 🔥 Updated handlePayAndContinue - Clears providerId from localStorage for Direct Service Flow
   const handlePayAndContinue = async () => {
     // Validate required booking data
     if (!bookingData.serviceId || !bookingData.bookedDate || !bookingData.bookedTime) {
@@ -167,7 +168,7 @@ export default function BookingConfirmationPage() {
       // Get current booking data from localStorage
       const existingBooking = JSON.parse(localStorage.getItem(BOOKING_KEY)) || {};
 
-      // 🔥 Build updated booking with address
+      // Build updated booking with address
       const updatedBooking = {
         serviceId: bookingData.serviceId || existingBooking.serviceId,
         serviceAddressId: selectedAddress,
@@ -179,7 +180,7 @@ export default function BookingConfirmationPage() {
         addMoreInfo: bookingData.addMoreInfo || existingBooking.addMoreInfo || '',
       };
 
-      // 🔥 Handle providerId based on flow - ONLY include if it exists and is not null
+      // Handle providerId based on flow - ONLY include if it exists
       if (
         existingBooking.providerId &&
         existingBooking.providerId !== null &&
@@ -189,20 +190,19 @@ export default function BookingConfirmationPage() {
         updatedBooking.providerId = existingBooking.providerId;
         console.log('✅ SERVICE CENTER FLOW - Provider ID preserved:', existingBooking.providerId);
       } else {
-        // Direct Service Flow - Explicitly DO NOT include providerId
+        // Direct Service Flow - DO NOT include providerId
         console.log('✅ DIRECT SERVICE FLOW - Provider ID excluded from payload');
-        // Do not set providerId at all - not even to null
       }
 
       // Update context
       updateBooking(updatedBooking);
 
-      // 🔥 Save to localStorage - Store clean object without providerId for Direct Service
+      // Save to localStorage
       const storageData = { ...updatedBooking };
 
-      // Only store providerId if it exists in the updated booking
+      // Only store providerId if it exists
       if (!updatedBooking.providerId) {
-        delete storageData.providerId; // Remove completely from storage
+        delete storageData.providerId;
       }
 
       localStorage.setItem(BOOKING_KEY, JSON.stringify(storageData));
@@ -214,8 +214,7 @@ export default function BookingConfirmationPage() {
       console.log('📍 Provider ID:', updatedBooking.providerId || 'NOT INCLUDED ❌');
       console.log('📍 Address ID:', updatedBooking.serviceAddressId);
       console.log('📅 Date/Time:', updatedBooking.bookedDate, updatedBooking.bookedTime);
-      console.log('📦 Final Payload Keys:', Object.keys(storageData));
-      console.log('📦 Final localStorage:', storageData);
+      console.log('💰 Booking Charge:', updatedBooking.serviceBookingCost);
 
       // Redirect to payment gateway
       router.push('/payment-gateway');
@@ -479,7 +478,7 @@ export default function BookingConfirmationPage() {
                               mt: 0.5,
                             }}
                           >
-                             {address.phone}
+                            {address.phone}
                           </Typography>
                         </Box>
 
@@ -566,29 +565,80 @@ export default function BookingConfirmationPage() {
                 Booking Details
               </Typography>
 
-              {/* Price */}
-              <Box sx={{ mb: 2.5 }}>
+              {/* 🔥 Booking Fee - Only Amount to Pay Now */}
+              <Box
+                sx={{
+                  mb: 2.5,
+                  p: 2,
+                  borderRadius: '8px',
+                  backgroundColor: '#F0F9F7',
+                  border: '2px solid #037166',
+                }}
+              >
                 <Typography
                   sx={{
                     fontFamily: 'var(--font-inter)',
-                    fontSize: { xs: '12px', md: '14px' },
+                    fontSize: { xs: '12px', md: '13px' },
                     color: '#6B7280',
                     mb: 0.5,
-                    fontWeight: 500,
+                    fontWeight: 600,
                   }}
                 >
-                  Total Price
+                  Booking Fee (Pay Now)
                 </Typography>
                 <Typography
                   sx={{
                     fontFamily: 'var(--font-inter)',
-                    fontSize: { xs: '20px', md: '24px' },
+                    fontSize: { xs: '24px', md: '28px' },
                     fontWeight: 700,
                     color: '#037166',
                   }}
                 >
                   ₹{bookingData.serviceBookingCost || '0'}
                 </Typography>
+              </Box>
+
+              {/* 🔥 Info Box - Consultation Fee */}
+              <Box
+                sx={{
+                  mb: 2.5,
+                  p: 2,
+                  borderRadius: '8px',
+                  backgroundColor: '#FEF3C7',
+                  border: '1px solid #FDE68A',
+                }}
+              >
+                <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1 }}>
+                  <InfoOutlinedIcon sx={{ fontSize: 18, color: '#92400E', mt: 0.2, flexShrink: 0 }} />
+                  <Box>
+                    <Typography
+                      sx={{
+                        fontFamily: 'var(--font-inter)',
+                        fontSize: { xs: '12px', md: '13px' },
+                        color: '#78350F',
+                        fontWeight: 600,
+                        lineHeight: 1.5,
+                        mb: 0.5,
+                      }}
+                    >
+                      Payment Information
+                    </Typography>
+                    <Typography
+                      sx={{
+                        fontFamily: 'var(--font-inter)',
+                        fontSize: { xs: '11px', md: '12px' },
+                        color: '#92400E',
+                        lineHeight: 1.6,
+                      }}
+                    >
+                      • Booking fee paid now to confirm appointment
+                      <br />
+                      • Consultation/Inspection fee collected at doorstep
+                      <br />
+                      • Service charges paid after completion
+                    </Typography>
+                  </Box>
+                </Box>
               </Box>
 
               <Divider sx={{ my: 2 }} />
@@ -633,7 +683,7 @@ export default function BookingConfirmationPage() {
                     mb: 1,
                   }}
                 >
-         
+                  Service Address
                 </Typography>
                 {selectedAddress && addresses.find((a) => a._id === selectedAddress) && (
                   <Box
@@ -722,7 +772,7 @@ export default function BookingConfirmationPage() {
                 {bookingLoading ? (
                   <CircularProgress size={24} sx={{ color: 'white' }} />
                 ) : (
-                  'Confirm Booking'
+                  `Pay ₹${bookingData.serviceBookingCost || '0'} & Confirm`
                 )}
               </Button>
             </Paper>
